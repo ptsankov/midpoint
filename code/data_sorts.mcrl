@@ -1,0 +1,195 @@
+%-----------------------------------------------------------------------
+% Data types 
+%-----------------------------------------------------------------------
+
+%-----------------------------------------------------------------------
+% Bool
+%-----------------------------------------------------------------------
+
+sort Bool
+
+func T,F:-> Bool
+
+map  
+  and : Bool#Bool -> Bool
+  eq : Bool#Bool -> Bool
+  if : Bool#Bool#Bool-> Bool
+  not : Bool -> Bool
+  or : Bool#Bool -> Bool
+
+var  
+  x,y:Bool
+rew  
+  not(T) = F
+  not(F) = T
+  eq(x,x)=T
+  eq(T,F)=F
+  eq(F,T)=F
+
+  if(T,x,y)=x
+  if(F,x,y)=y
+
+  or(x,y) = not( and(not(x), not(y) ) )
+
+  and(x,y)=if(x,y,F)
+
+%-----------------------------------------------------------------------
+% Nat
+%-----------------------------------------------------------------------
+
+sort Nat
+
+func 1: -> Nat
+     2: -> Nat
+     3: -> Nat
+     4: -> Nat
+
+map  leq : Nat # Nat -> Bool
+     eq : Nat # Nat -> Bool
+
+var  x,y : Nat
+
+rew  leq(1,x) = T
+     leq(x,x) = T
+     leq(2,1) = F
+     leq(3,1) = F
+     leq(4,1) = F
+     leq(3,2) = F
+     leq(4,2) = F
+     leq(4,3) = F
+     leq(2,3) = T
+     leq(2,4) = T
+     leq(3,4) = T
+
+     eq(x,y) = and(leq(x,y),leq(y,x))
+
+
+%-----------------------------------------------------------------------
+% Msg
+%-----------------------------------------------------------------------
+
+sort Msg
+
+func SYN: -> Msg
+     SYNACK: -> Msg
+     ACK: -> Msg
+     FIN: -> Msg
+
+map  leq : Msg # Msg -> Bool
+     eq : Msg # Msg -> Bool
+
+var  x,y : Msg
+
+rew  leq(SYN,x) = T
+     leq(x,x) = T
+     leq(SYNACK,SYN) = F
+     leq(ACK,SYN) = F
+     leq(FIN,SYN) = F
+     leq(ACK,SYNACK) = F
+     leq(FIN,SYNACK) = F
+     leq(FIN,ACK) = F
+     leq(SYNACK,ACK) = T
+     leq(SYNACK,FIN) = T
+     leq(ACK,FIN) = T
+
+     eq(x,y) = and(leq(x,y),leq(y,x))
+
+%-----------------------------------------------------------------------
+% Endpoint
+%-----------------------------------------------------------------------
+
+sort EP
+
+func A : -> EP
+     B : -> EP
+     C : -> EP
+     M : -> EP
+
+
+map  eq : EP # EP -> Bool
+     leq : EP # EP -> Bool
+
+var  x,y : EP
+
+rew  
+     leq(x,x) = T
+     leq(A,x) = T
+     leq(B,A) = F  leq(B,C)=T  leq(B,M)=T
+     leq(C,A) = F  leq(C,B)=F  leq(C,M)=T
+     leq(M,A) = F  leq(M,B)=F  leq(M,C)=F
+   
+     eq(x,y) = and(leq(x,y),leq(y,x))
+
+
+%-----------------------------------------------------------------------
+% Set
+%-----------------------------------------------------------------------
+
+sort Set
+
+func 
+  nil: -> Set
+  ins: Msg # Set -> Set
+
+map
+  eq: Set # Set -> Bool
+  in: Msg # Set -> Bool
+  rm: Msg # Set -> Set
+  add: Msg # Set -> Set
+  if: Bool # Set # Set -> Set
+
+var
+  b,b': Set
+  x,x': Msg
+rew
+
+  eq(nil,ins(x,b))=F
+  eq(ins(x,b),nil)=F
+  eq(ins(x,b),ins(x',b'))=and(eq(x,x'),eq(b,b'))
+  eq(nil,nil)=T
+
+  in(x,nil)=F
+  in(x,ins(x',b))=if(eq(x,x'),T,in(x,b))
+
+  rm(x,nil)=nil
+  rm(x,ins(x',b))=if(eq(x,x'),b,ins(x',rm(x,b)))
+
+  if(T,b,b')=b
+  if(F,b,b')=b'
+
+  add(x,b)=if(in(x,b),b,ins(x,b))
+
+%-----------------------------------------------------------------------
+% Queue
+%-----------------------------------------------------------------------
+
+sort Queue
+
+func
+  emptyQueue: -> Queue
+  enqueue: Msg # Queue -> Queue
+
+map
+  eq: Queue # Queue -> Bool
+  head: Msg # Queue -> Bool
+  dequeue: Queue -> Queue
+  if: Bool # Queue # Queue -> Queue
+
+var
+  q, q': Queue
+  x, x': Msg
+
+rew
+  eq(emptyQueue,enqueue(x,q)) = F
+  eq(enqueue(x,q),emptyQueue) = F
+  eq(enqueue(x,q),enqueue(x',q')) = and(eq(x,x'), eq(q,q'))
+  eq(emptyQueue,emptyQueue) = T
+
+  head(x,emptyQueue) = F
+  head(x,enqueue(x',q)) = if(eq(q,emptyQueue),eq(x,x'),head(x,q))
+
+  if(T,q,q') = q
+  if(F,q,q') = q'
+
+  dequeue(emptyQueue) = emptyQueue
+  dequeue(enqueue(x,q)) = if(eq(q,emptyQueue),q,enqueue(x,dequeue(q)))
